@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader';
 
 import init from './init';
 
@@ -6,24 +7,57 @@ import './style.css';
 
 const { sizes, camera, scene, canvas, controls, renderer } = init();
 
-camera.position.z = 3;
+camera.position.set(1, 2, 3);
 
-const geometry = new THREE.BoxGeometry(1, 1, 1);
-const material = new THREE.MeshBasicMaterial({
-	color: 'gray',
-	wireframe: true,
+const floor = new THREE.Mesh(
+	new THREE.PlaneGeometry(10, 10),
+	new THREE.MeshStandardMaterial({
+		color: '#444',
+		metalness: 0,
+		roughness: 0.5,
+	}),
+);
+floor.receiveShadow = true;
+floor.rotation.x = -Math.PI * 0.5;
+scene.add(floor);
+
+const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.61);
+hemisphereLight.position.set(0, 50, 0);
+scene.add(hemisphereLight);
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.54);
+dirLight.position.set(-8, 12, 8);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize = new THREE.Vector2(1024, 1024);
+scene.add(dirLight);
+
+const loader = new GLTFLoader();
+
+let mixer = null;
+
+loader.load('/models/BrainStem/BrainStem.gltf', (gltf) => {
+	mixer = new THREE.AnimationMixer(gltf.scene);
+
+	const action = mixer.clipAction(gltf.animations[0]);
+	action.play();
+	scene.add(gltf.scene);
 });
-const mesh = new THREE.Mesh(geometry, material);
-scene.add(mesh);
+
+const clock = new THREE.Clock();
 
 const tick = () => {
 	controls.update();
 	renderer.render(scene, camera);
+
+	const delta = clock.getDelta();
+	if (mixer) {
+		mixer.update(delta * 0.5);
+	}
 	window.requestAnimationFrame(tick);
 };
 tick();
 
-/** Базовые обпаботчики событий длы поддержки ресайза */
+/** Базовые обработчики событий длы поддержки ресайза */
 window.addEventListener('resize', () => {
 	// Обновляем размеры
 	sizes.width = window.innerWidth;
